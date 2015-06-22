@@ -415,6 +415,50 @@ class TestDataSetOperations(unittest.TestCase):
         self.assertEqual(msg.get("code"), response.status_code)
         pass  # void return
 
+    def test_DataSet_01_PATCH_InvalidShape(self):
+        # triggers AssertionError within backend service
+        uri = "repo/{0}/{1}".format(self.repo, "IGO_Members")
+        InvalidShape = {
+            "UN": {
+                "kind": "datagator#Matrix",
+                "rows": [[1, 2, 3], [4, 5], [6, 7, 8]],  # ill-formed row(s)
+                "columnsCount": 3,
+                "rowsCount": 3,
+                "rowHeaders": 0,
+                "columnHeaders": 0
+            }
+        }
+        response = self.service.patch(uri, InvalidShape)
+        self.assertEqual(response.status_code, 400)
+        msg = response.json()
+        self.assertEqual(self.validator.validate(msg), None)
+        _log.debug(msg.get("message"))
+        self.assertEqual(msg.get("kind"), "datagator#Error")
+        self.assertEqual(msg.get("code"), response.status_code)
+        pass  # void return
+
+    def test_DataSet_01_PATCH_InconsistentShape(self):
+        # triggers AssertionError within backend service
+        uri = "repo/{0}/{1}".format(self.repo, "IGO_Members")
+        InconsistentShape = {
+            "UN": {
+                "kind": "datagator#Matrix",
+                "rows": [[1, 2, 3], [4, 5, 6], [6, 7, 8]],
+                "columnsCount": 4,  # inconsistent columns count
+                "rowsCount": 3,
+                "rowHeaders": 0,
+                "columnHeaders": 0
+            }
+        }
+        response = self.service.patch(uri, InconsistentShape)
+        self.assertEqual(response.status_code, 400)
+        msg = response.json()
+        self.assertEqual(self.validator.validate(msg), None)
+        _log.debug(msg.get("message"))
+        self.assertEqual(msg.get("kind"), "datagator#Error")
+        self.assertEqual(msg.get("code"), response.status_code)
+        pass  # void return
+
     def test_DataSet_01_PATCH_RemoveNonExistent(self):
         # NOTE: this does NOT trigger an error on the backend service
 

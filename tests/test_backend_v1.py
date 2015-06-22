@@ -390,6 +390,48 @@ class TestDataSetOperations(unittest.TestCase):
         self.assertEqual(msg.get("code"), 400)
         pass  # void return
 
+    def test_DataSet_PUT_InvalidShape(self):
+        # triggers AssertionError within backend service
+        ID = "{0}/{1}".format(self.repo, "IGO_Members")
+        InvalidShape = {
+            "UN": {
+                "kind": "datagator#Matrix",
+                "rows": [[1, 2, 3], [4, 5], [6, 7, 8]],  # ill-formed row(s)
+                "columnsCount": 3,
+                "rowsCount": 3,
+                "rowHeaders": 0,
+                "columnHeaders": 0
+            }
+        }
+        response = self.service.put(ID, InvalidShape)
+        msg = response.json()
+        self.assertEqual(self.validator.validate(msg), None)
+        _log.debug(msg.get("message"))
+        self.assertEqual(msg.get("kind"), "datagator#Error")
+        self.assertEqual(msg.get("code"), 400)
+        pass  # void return
+
+    def test_DataSet_PUT_InconsistentShape(self):
+        # triggers AssertionError within backend service
+        ID = "{0}/{1}".format(self.repo, "IGO_Members")
+        InconsistentShape = {
+            "UN": {
+                "kind": "datagator#Matrix",
+                "rows": [[1, 2, 3], [4, 5, 6], [6, 7, 8]],
+                "columnsCount": 4,  # inconsistent columns count
+                "rowsCount": 3,
+                "rowHeaders": 0,
+                "columnHeaders": 0
+            }
+        }
+        response = self.service.put(ID, InconsistentShape)
+        msg = response.json()
+        self.assertEqual(self.validator.validate(msg), None)
+        _log.debug(msg.get("message"))
+        self.assertEqual(msg.get("kind"), "datagator#Error")
+        self.assertEqual(msg.get("code"), 400)
+        pass  # void return
+
     def test_DataSet_PUT_RemoveNonExistent(self):
         # NOTE: this does NOT trigger an error on the backend service, because
         # the PUT method is idempotent, namely, subsequent requests trying to
