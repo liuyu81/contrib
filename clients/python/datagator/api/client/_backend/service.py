@@ -88,17 +88,18 @@ class ThrottleAdapter(HTTPAdapter):
                     timestamp + ThrottleAdapter.min_wait
                 break
 
-            # if there is `X-RateLimit-Reset` header, we know exactly when the
-            # rate limiting quota is going to reset, so we simply schedule the
-            # next send() to that time timestamp.
+            # when there is an `X-RateLimit-Reset` header, we know when the
+            # rate-limiting quota resets, so we schedule next send() to that
+            # exact timestamp;
             if "X-RateLimit-Reset" in response.headers:
                 ThrottleAdapter.scheduled = dt.datetime.utcfromtimestamp(
                     int(response['X-RateLimit-Reset']))
+                continue
+
             # otherwise, we apply exponential backoff time to the next send()
-            # according to the # of previous attempts, i.e. 30s, 60s, 120s.
-            else:
-                ThrottleAdapter.scheduled = \
-                    timestamp + dt.timedelta(seconds=15 * (2 ** attempted))
+            # according to the # of previous attempts, i.e. 30, 60, 120 sec
+            ThrottleAdapter.scheduled = \
+                timestamp + dt.timedelta(seconds=15 * (2 ** attempted))
 
         return response
 
