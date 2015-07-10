@@ -287,7 +287,7 @@ class Entity(with_metaclass(EntityType, object)):
 
     cache = property(_cache_getter, None, _cache_deleter)
 
-    def __json__(self):
+    def _to_json(self):
         return self.cache
 
     def __repr__(self):

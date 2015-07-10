@@ -12,18 +12,21 @@
 
 from __future__ import unicode_literals, with_statement
 
-import io
+import datetime as dt
 import json
 import logging
 import os
 import requests
 import ssl
+import time
 
 from .. import environ
 from .._compat import to_bytes, to_native
 
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.poolmanager import PoolManager
+from requests.status_codes import codes
+from requests.exceptions import Timeout
 
 
 __all__ = ['DataGatorService', ]
@@ -33,10 +36,80 @@ __all__ = [to_native(n) for n in __all__]
 _log = logging.getLogger(__package__)
 
 
+class ThrottleAdapter(HTTPAdapter):
+    """
+    Limit send frequencies to conform backend rate limiting
+    """
+
+    max_attempts = 3
+    min_wait = dt.timedelta(microseconds=100000)  # 0.1 sec
+    scheduled = None
+
+    def send(self, request, stream=False, timeout=None, verify=True, cert=None,
+             proxies=None):
+
+        if isinstance(timeout, tuple):
+            timeout = timeout[0]
+
+        attempted = 0
+        max_wait = None if timeout is None else dt.timedelta(seconds=timeout)
+        response = None
+
+        while attempted < ThrottleAdapter.max_attempts:
+
+            scheduled = ThrottleAdapter.scheduled
+            timestamp = dt.datetime.utcnow()
+            wait_for = dt.timedelta(0)
+
+            if scheduled is not None and scheduled >= timestamp:
+                wait_for = scheduled - timestamp
+
+            if max_wait is not None and wait_for > max_wait:
+                raise Timeout(
+                    "request cannot be send within user-specified timeout")
+
+            if wait_for > dt.timedelta(0):
+                _log.debug("entering sleep for rate control")
+                # python 2.6 and before do not have `timedelta.total_seconds()`
+                wait_seconds = float(wait_for.microseconds) / 1000000 + \
+                    wait_for.seconds + wait_for.days * 86400
+                _log.debug("  - {0} seconds".format(wait_seconds))
+                time.sleep(wait_seconds)
+
+            response = super(ThrottleAdapter, self).send(
+                request, stream=stream, timeout=timeout, verify=verify,
+                cert=cert, proxies=proxies)
+
+            attempted += 1
+
+            if response.status_code != codes.too_many_requests:
+                # apply minimum wait time when no over rate
+                ThrottleAdapter.scheduled = \
+                    timestamp + ThrottleAdapter.min_wait
+                break
+
+            # if there is `X-RateLimit-Reset` header, we know exactly when the
+            # rate limiting quota is going to reset, so we simply schedule the
+            # next send() to that time timestamp.
+            if "X-RateLimit-Reset" in response.headers:
+                ThrottleAdapter.scheduled = dt.datetime.utcfromtimestamp(
+                    int(response['X-RateLimit-Reset']))
+            # otherwise, we apply exponential backoff time to the next send()
+            # according to the # of previous attempts, i.e. 30s, 60s, 120s.
+            else:
+                ThrottleAdapter.scheduled = \
+                    timestamp + dt.timedelta(seconds=15 * (2 ** attempted))
+
+        return response
+
+    pass
+
+
 class TLSv1Adapter(HTTPAdapter):
     """
-    Force `requests` session to use TLSv1 for https connections
+    Enforce TLS v1 protocol for HTTPS sessions
     """
+
     def init_poolmanager(self, connections, maxsize, block):
         self.poolmanager = PoolManager(
             num_pools=connections,
@@ -44,6 +117,7 @@ class TLSv1Adapter(HTTPAdapter):
             block=block,
             ssl_version=ssl.PROTOCOL_TLSv1)
         pass
+
     pass
 
 
@@ -79,7 +153,7 @@ class DataGatorService(object):
     HTTP client for DataGator's backend services.
     """
 
-    __slots__ = ['__http', ]
+    __slots__ = ['http', ]
 
     def __init__(self, auth=None, verify=not environ.DEBUG):
         """
@@ -91,11 +165,16 @@ class DataGatorService(object):
             debugging mode and ``True`` otherwise.
         """
 
-        self.__http = requests.Session()
+        self.http = requests.Session()
 
         # force TLSv1, this resolves SSL error (EOF occurred in violation of
         # protocol), see http://stackoverflow.com/questions/14102416/
         self.http.mount('https://', TLSv1Adapter())
+
+        # apply rate limitation
+        throttle = ThrottleAdapter()
+        self.http.mount('http://', throttle)
+        self.http.mount('https://', throttle)
 
         self.auth = auth
 
@@ -131,13 +210,6 @@ class DataGatorService(object):
         else:
             self.http.auth = None
         pass
-
-    @property
-    def http(self):
-        """
-        underlying HTTP session (:class:`requests.Session`)
-        """
-        return self.__http
 
     def delete(self, path, headers={}):
         """
