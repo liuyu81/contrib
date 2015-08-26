@@ -7,8 +7,8 @@
     :license: Apache 2.0, see LICENSE for more details.
 """
 
-import json
 import collections
+import json
 
 
 __all__ = ['RepoRef', 'DataSetRef', 'MatrixRef', 'RecipeRef', ]
@@ -42,7 +42,11 @@ class DataSetRef(EntityRef):
             ('repo', RepoRef(repo)),
             ('name', dataset),
         ])
-        if rev is not None:
+        try:
+            rev = int(rev)
+        except (TypeError, ValueError):
+            pass
+        else:
             self['rev'] = rev
         pass
 
@@ -52,8 +56,8 @@ class DataSetRef(EntityRef):
 class DataItemKey(collections.OrderedDict):
 
     def __init__(self, kind, key):
-        super(EntityRef, self).__init__([
-            ('kind', "datagator#{0}".format(kind)),
+        super(DataItemKey, self).__init__([
+            ('kind', "datagator#{0}".format(kind) if kind else None),
             ('name', key)
         ])
         pass
@@ -61,25 +65,33 @@ class DataItemKey(collections.OrderedDict):
     pass
 
 
-class MatrixRef(EntityRef):
+class DataItemRef(EntityRef):
 
     def __init__(self, repo, dataset, rev, key):
         super(DataItemRef, self).__init__()
         self.update(DataSetRef(repo, dataset, rev))
-        self['items'] = (DataItemKey("Matrix", key), )
+        self['items'] = (DataItemKey(None, key), )
         self['itemsCount'] = 1
         pass
 
     pass
 
 
-class RecipeRef(EntityRef):
+class MatrixRef(DataItemRef):
 
     def __init__(self, repo, dataset, rev, key):
-        super(DataItemRef, self).__init__()
-        self.update(DataSetRef(repo, dataset, rev))
-        self['items'] = (DataItemKey("Recipe", key), )
-        self['itemsCount'] = 1
+        super(MatrixRef, self).__init__(repo, dataset, rev, key)
+        self['items'][0]['kind'] = "datagator#Matrix"
+        pass
+
+    pass
+
+
+class RecipeRef(DataItemRef):
+
+    def __init__(self, repo, dataset, rev, key):
+        super(RecipeRef, self).__init__(repo, dataset, rev, key)
+        self['items'][0]['kind'] = "datagator#Recipe"
         pass
 
     pass
