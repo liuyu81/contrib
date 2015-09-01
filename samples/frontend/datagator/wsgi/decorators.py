@@ -7,39 +7,17 @@
     :license: Apache 2.0, see LICENSE for more details.
 """
 
-import base64
 import functools
 
-from django.contrib.auth import authenticate, login
 from django.core.exceptions import SuspiciousOperation
 from django.http import HttpResponse, HttpResponseForbidden
+
+from datagator.rest.decorators import _basic_auth
 
 from .http import HttpResponseUnauthorized
 
 
 __all__ = ['with_basic_auth', ]
-
-
-def _basic_auth(request):
-
-    if request.user.is_authenticated():
-        return request
-
-    if 'HTTP_AUTHORIZATION' in request.META:
-        auth = request.META['HTTP_AUTHORIZATION'].split()
-        if len(auth) == 2:
-            if auth[0].lower() == "basic":
-                uname, passwd = base64.b64decode(auth[1]).split(':')
-                user = authenticate(username=uname, password=passwd)
-                if user is not None:
-                    if user.is_active:
-                        login(request, user)
-                        request.user = user
-                        return request
-
-        raise SuspiciousOperation("Failed authentication.")
-
-    return request
 
 
 def with_basic_auth(_method=None, **options):
