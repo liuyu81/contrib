@@ -1,0 +1,6 @@
+/bin/
+/.project
+/.classpath
+/.externalToolBuilders/
+/.settings/
+*.class
