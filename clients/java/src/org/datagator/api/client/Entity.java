@@ -14,15 +14,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.datagator.api.client;
 
 /**
  * @author LIU Yu <liuyu@opencps.net>
  * @date 2015/09/01
  */
-
-package org.datagator.api.client;
-
 public abstract class Entity
 {
-	public String kind;
+
+    public String kind;
 }

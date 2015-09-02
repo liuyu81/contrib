@@ -14,14 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-/**
- * Low-level HTTP client to back-end web services
- *
- * @author LIU Yu <liuyu@opencps.net>
- * @date 2015/09/01
- */
-
 package org.datagator.api.client._backend;
 
 import java.io.IOException;
@@ -56,103 +48,110 @@ import org.apache.http.ssl.SSLContexts;
 
 import org.datagator.api.client.environ;
 
+/**
+ * Low-level HTTP client to back-end web services
+ *
+ * @author LIU Yu <liuyu@opencps.net>
+ * @date 2015/09/01
+ */
 public class DataGatorService
 {
-	private static JsonFactory json = new JsonFactory();
 
-	private final CloseableHttpClient http;
-	private final HttpClientContext context;
+    private static JsonFactory json = new JsonFactory();
 
-	public DataGatorService()
-	{
-		super();
-		// force TLSv1 protocol
-		SSLConnectionSocketFactory ssl_factory = null;
-		try {
-			SSLContext ssl_context = SSLContexts.custom().build();
-			ssl_factory = new SSLConnectionSocketFactory(ssl_context,
-			    new String[] { "TLSv1" }, null,
-			    SSLConnectionSocketFactory.getDefaultHostnameVerifier());
-		} catch (KeyManagementException e) {
-			e.printStackTrace();
-		} catch (NoSuchAlgorithmException e) {
-			e.printStackTrace();
-		}
-		this.http = HttpClients.custom().setSSLSocketFactory(ssl_factory)
-		    .setUserAgent(environ.DATAGATOR_API_USER_AGENT).build();
-		this.context = HttpClientContext.create();
-	}
+    private final CloseableHttpClient http;
+    private final HttpClientContext context;
 
-	public DataGatorService(UsernamePasswordCredentials auth)
-	{
-		this();
-		// attach credentials to context
-		HttpHost host = new HttpHost(environ.DATAGATOR_API_HOST,
-		    environ.DATAGATOR_API_PORT, environ.DATAGATOR_API_SCHEME);
-		AuthScope scope = new AuthScope(host.getHostName(), host.getPort());
-		CredentialsProvider provider = new BasicCredentialsProvider();
-		provider.setCredentials(scope, auth);
-		this.context.setCredentialsProvider(provider);
-		// enable preemptive (pro-active) basic authentication
-		AuthCache cache = new BasicAuthCache();
-		cache.put(host, new BasicScheme());
-		this.context.setAuthCache(cache);
-	}
+    public DataGatorService()
+    {
+        super();
+        // force TLSv1 protocol
+        SSLConnectionSocketFactory ssl_factory = null;
+        try {
+            SSLContext ssl_context = SSLContexts.custom().build();
+            ssl_factory = new SSLConnectionSocketFactory(ssl_context,
+                new String[]{"TLSv1"}, null,
+                SSLConnectionSocketFactory.getDefaultHostnameVerifier());
+        } catch (KeyManagementException e) {
+            e.printStackTrace();
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+        this.http = HttpClients.custom().setSSLSocketFactory(ssl_factory)
+            .setUserAgent(environ.DATAGATOR_API_USER_AGENT).build();
+        this.context = HttpClientContext.create();
+    }
 
-	private static URI buildServiceURI(String endpoint)
-	    throws URISyntaxException
-	{
-		URI uri = new URIBuilder().setScheme(environ.DATAGATOR_API_SCHEME)
-		    .setHost(environ.DATAGATOR_API_HOST)
-		    .setPath(environ.DATAGATOR_API_URL_PREFIX + endpoint).build();
-		return uri;
-	}
+    public DataGatorService(UsernamePasswordCredentials auth)
+    {
+        this();
+        // attach credentials to context
+        HttpHost host = new HttpHost(environ.DATAGATOR_API_HOST,
+            environ.DATAGATOR_API_PORT, environ.DATAGATOR_API_SCHEME);
+        AuthScope scope = new AuthScope(host.getHostName(), host.getPort());
+        CredentialsProvider provider = new BasicCredentialsProvider();
+        provider.setCredentials(scope, auth);
+        this.context.setCredentialsProvider(provider);
+        // enable preemptive (pro-active) basic authentication
+        AuthCache cache = new BasicAuthCache();
+        cache.put(host, new BasicScheme());
+        this.context.setAuthCache(cache);
+    }
 
-	public CloseableHttpResponse get(String endpoint)
-	    throws URISyntaxException, IOException
-	{
-		URI uri = buildServiceURI(endpoint);
-		HttpGet request = new HttpGet(uri);
-		return http.execute(request, context);
-	}
+    private static URI buildServiceURI(String endpoint)
+        throws URISyntaxException
+    {
+        URI uri = new URIBuilder().setScheme(environ.DATAGATOR_API_SCHEME)
+            .setHost(environ.DATAGATOR_API_HOST)
+            .setPath(environ.DATAGATOR_API_URL_PREFIX + endpoint).build();
+        return uri;
+    }
 
-	public CloseableHttpResponse patch(String endpoint)
-	    throws URISyntaxException, IOException
-	{
-		URI uri = buildServiceURI(endpoint);
-		HttpPatch request = new HttpPatch(uri);
-		return http.execute(request, context);
-	}
+    public CloseableHttpResponse get(String endpoint)
+        throws URISyntaxException, IOException
+    {
+        URI uri = buildServiceURI(endpoint);
+        HttpGet request = new HttpGet(uri);
+        return http.execute(request, context);
+    }
 
-	public static void main(String[] args) throws Exception
-	{
-		java.util.logging.Logger.getLogger("org.apache.http.wire")
-		    .setLevel(java.util.logging.Level.FINEST);
-		java.util.logging.Logger.getLogger("org.apache.http.headers")
-		    .setLevel(java.util.logging.Level.FINEST);
+    public CloseableHttpResponse patch(String endpoint)
+        throws URISyntaxException, IOException
+    {
+        URI uri = buildServiceURI(endpoint);
+        HttpPatch request = new HttpPatch(uri);
+        return http.execute(request, context);
+    }
 
-		System.setProperty("org.apache.commons.logging.Log",
-		    "org.apache.commons.logging.impl.SimpleLog");
-		System.setProperty("org.apache.commons.logging.simplelog.showdatetime",
-		    "true");
-		System.setProperty(
-		    "org.apache.commons.logging.simplelog.log.httpclient.wire",
-		    "debug");
-		System.setProperty(
-		    "org.apache.commons.logging.simplelog.log.org.apache.http",
-		    "debug");
-		System.setProperty(
-		    "org.apache.commons.logging.simplelog.log.org.apache.http.headers",
-		    "debug");
+    public static void main(String[] args)
+        throws Exception
+    {
+        java.util.logging.Logger.getLogger("org.apache.http.wire")
+            .setLevel(java.util.logging.Level.FINEST);
+        java.util.logging.Logger.getLogger("org.apache.http.headers")
+            .setLevel(java.util.logging.Level.FINEST);
 
-		UsernamePasswordCredentials auth = new UsernamePasswordCredentials(
-		    "Pardee", "");
-		DataGatorService service = new DataGatorService(auth);
+        System.setProperty("org.apache.commons.logging.Log",
+            "org.apache.commons.logging.impl.SimpleLog");
+        System.setProperty("org.apache.commons.logging.simplelog.showdatetime",
+            "true");
+        System.setProperty(
+            "org.apache.commons.logging.simplelog.log.httpclient.wire",
+            "debug");
+        System.setProperty(
+            "org.apache.commons.logging.simplelog.log.org.apache.http",
+            "debug");
+        System.setProperty(
+            "org.apache.commons.logging.simplelog.log.org.apache.http.headers",
+            "debug");
 
-		InputStream stream = service.get("/").getEntity().getContent();
+        UsernamePasswordCredentials auth = new UsernamePasswordCredentials(
+            "Pardee", "");
+        DataGatorService service = new DataGatorService(auth);
 
-		// JsonParser parser = json.createParser(stream);
+        InputStream stream = service.get("/").getEntity().getContent();
 
-		IOUtils.copy(stream, System.out);
-	}
+        // JsonParser parser = json.createParser(stream);
+        IOUtils.copy(stream, System.out);
+    }
 }
