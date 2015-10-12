@@ -16,6 +16,8 @@
  */
 package org.datagator.api.client;
 
+import org.datagator.api.client.Entity;
+
 /**
  * @author LIU Yu <liuyu@opencps.net>
  * @date 2015/09/01
@@ -23,5 +25,10 @@ package org.datagator.api.client;
 public class Repo
     extends Entity
 {
+
+    public Repo()
+    {
+        super("datagator#Repo");
+    }
 
 }

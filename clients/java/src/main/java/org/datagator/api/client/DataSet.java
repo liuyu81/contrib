@@ -20,7 +20,11 @@ package org.datagator.api.client;
  * @author LIU Yu <liuyu@opencps.net>
  * @date 2015/09/01
  */
-public class Message
+public class DataSet
     extends Entity
 {
+    private DataSet()
+    {
+        super("datagator#DataSet");
+    }
 }

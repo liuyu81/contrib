@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.datagator.api.client._backend;
+package org.datagator.api.client.backend;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -22,13 +22,16 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
+import java.util.logging.Logger;
 
 import javax.net.ssl.SSLContext;
 
 import com.fasterxml.jackson.core.JsonFactory;
 
 import org.apache.commons.io.IOUtils;
+
 import org.apache.http.HttpHost;
+import org.apache.http.HttpEntity;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.AuthCache;
@@ -39,6 +42,9 @@ import org.apache.http.client.methods.HttpPatch;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
+import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+import org.apache.http.entity.ContentType;
+import org.apache.http.entity.InputStreamEntity;
 import org.apache.http.impl.auth.BasicScheme;
 import org.apache.http.impl.client.BasicAuthCache;
 import org.apache.http.impl.client.BasicCredentialsProvider;
@@ -57,14 +63,20 @@ import org.datagator.api.client.environ;
 public class DataGatorService
 {
 
-    private static JsonFactory json = new JsonFactory();
+    private static final JsonFactory json = new JsonFactory();
 
-    private final CloseableHttpClient http;
-    private final HttpClientContext context;
+    private static final CloseableHttpClient http;
 
-    public DataGatorService()
-    {
-        super();
+    private static final Logger log = Logger.getLogger(
+        "org.datagator.api.client.backend");
+
+    static {
+        // apply rate limit
+        class ThrottleConnectionManager
+            extends PoolingHttpClientConnectionManager
+        {
+        };
+
         // force TLSv1 protocol
         SSLConnectionSocketFactory ssl_factory = null;
         try {
@@ -73,18 +85,41 @@ public class DataGatorService
                 new String[]{"TLSv1"}, null,
                 SSLConnectionSocketFactory.getDefaultHostnameVerifier());
         } catch (KeyManagementException e) {
-            e.printStackTrace();
+            log.severe(e.getMessage());
+            System.exit(-1);
         } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
+            log.severe(e.getMessage());
+            System.exit(-1);
         }
-        this.http = HttpClients.custom().setSSLSocketFactory(ssl_factory)
+        // connection manager
+        http = HttpClients.custom().setSSLSocketFactory(ssl_factory)
+            .setConnectionManager(new ThrottleConnectionManager())
             .setUserAgent(environ.DATAGATOR_API_USER_AGENT).build();
+    }
+
+    private static URI buildServiceURI(String endpoint)
+        throws URISyntaxException
+    {
+        URI uri = new URIBuilder().setScheme(environ.DATAGATOR_API_SCHEME)
+            .setHost(environ.DATAGATOR_API_HOST)
+            .setPath(environ.DATAGATOR_API_URL_PREFIX + endpoint).build();
+        return uri;
+    }
+
+    private final HttpClientContext context;
+
+    public DataGatorService()
+    {
+        super();
+        log.info("Initializing service without authorization");
         this.context = HttpClientContext.create();
     }
 
     public DataGatorService(UsernamePasswordCredentials auth)
     {
         this();
+        log.info(String.format("Initializing service with authorization: %s",
+            auth.getUserName()));
         // attach credentials to context
         HttpHost host = new HttpHost(environ.DATAGATOR_API_HOST,
             environ.DATAGATOR_API_PORT, environ.DATAGATOR_API_SCHEME);
@@ -98,60 +133,56 @@ public class DataGatorService
         this.context.setAuthCache(cache);
     }
 
-    private static URI buildServiceURI(String endpoint)
-        throws URISyntaxException
-    {
-        URI uri = new URIBuilder().setScheme(environ.DATAGATOR_API_SCHEME)
-            .setHost(environ.DATAGATOR_API_HOST)
-            .setPath(environ.DATAGATOR_API_URL_PREFIX + endpoint).build();
-        return uri;
-    }
-
     public CloseableHttpResponse get(String endpoint)
         throws URISyntaxException, IOException
     {
-        URI uri = buildServiceURI(endpoint);
-        HttpGet request = new HttpGet(uri);
+        HttpGet request = new HttpGet(buildServiceURI(endpoint));
         return http.execute(request, context);
     }
 
-    public CloseableHttpResponse patch(String endpoint)
+    public CloseableHttpResponse patch(String endpoint, InputStream data,
+        ContentType ctype)
         throws URISyntaxException, IOException
     {
-        URI uri = buildServiceURI(endpoint);
-        HttpPatch request = new HttpPatch(uri);
+        HttpPatch request = new HttpPatch(buildServiceURI(endpoint));
+        if (data != null) {
+            HttpEntity entity = new InputStreamEntity(data, ctype);
+            request.setEntity(entity);
+        }
         return http.execute(request, context);
+    }
+
+    public CloseableHttpResponse patch(String endpoint, InputStream data)
+        throws URISyntaxException, IOException
+    {
+        return patch(endpoint, data, ContentType.APPLICATION_JSON);
     }
 
     public static void main(String[] args)
         throws Exception
     {
-        java.util.logging.Logger.getLogger("org.apache.http.wire")
-            .setLevel(java.util.logging.Level.FINEST);
-        java.util.logging.Logger.getLogger("org.apache.http.headers")
-            .setLevel(java.util.logging.Level.FINEST);
+        UsernamePasswordCredentials auth = null;
+        String credentials = environ.DATAGATOR_CREDENTIALS;
+        if (credentials != null) {
+            String[] tuple = credentials.split(".", 1);
+            if (tuple.length > 1) {
+                auth = new UsernamePasswordCredentials(tuple[0], tuple[1]);
+            } else if (tuple.length > 0) {
+                auth = new UsernamePasswordCredentials(tuple[0], null);
+            }
+        }
 
-        System.setProperty("org.apache.commons.logging.Log",
-            "org.apache.commons.logging.impl.SimpleLog");
-        System.setProperty("org.apache.commons.logging.simplelog.showdatetime",
-            "true");
-        System.setProperty(
-            "org.apache.commons.logging.simplelog.log.httpclient.wire",
-            "debug");
-        System.setProperty(
-            "org.apache.commons.logging.simplelog.log.org.apache.http",
-            "debug");
-        System.setProperty(
-            "org.apache.commons.logging.simplelog.log.org.apache.http.headers",
-            "debug");
+        final DataGatorService service;
+        if (auth != null) {
+            service = new DataGatorService(auth);
+        } else {
+            service = new DataGatorService();
+        }
 
-        UsernamePasswordCredentials auth = new UsernamePasswordCredentials(
-            "Pardee", "");
-        DataGatorService service = new DataGatorService(auth);
-
-        InputStream stream = service.get("/").getEntity().getContent();
+        CloseableHttpResponse response = service.get("/");
+        response.getEntity().writeTo(System.out);
+        response.close();
 
         // JsonParser parser = json.createParser(stream);
-        IOUtils.copy(stream, System.out);
     }
 }
