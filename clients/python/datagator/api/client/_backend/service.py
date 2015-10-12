@@ -146,7 +146,7 @@ def safe_url(path):
 def make_payload(data):
     if hasattr(data, "read"):
         return data
-    return to_bytes(json.dumps(data))
+    return to_bytes(json.dumps(data, ensure_ascii=False))
 
 
 class DataGatorService(object):

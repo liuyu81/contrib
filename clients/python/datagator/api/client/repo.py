@@ -107,8 +107,9 @@ class ChangeSet(object):
 
         try:
             self.__tmp.seek(0, SEEK_SET)
+            endpoint = "{0}/data/".format(self.__uri)
             with validated(Entity.service.patch(
-                    self.__uri, data=self.__tmp), (202, )) as r:
+                    endpoint, data=self.__tmp), (202, )) as r:
                 # TODO watch task for completion
                 pass
         except Exception as e:
@@ -425,7 +426,8 @@ class Repo(Entity):
         except (AssertionError, ):
             raise KeyError("invalid dataset name")
         # create / update dataset
-        with validated(Entity.service.put(ref.uri, ref.ref), (200, 201)) as r:
+        endpoint = "{0}".format(ref.uri)
+        with validated(Entity.service.put(endpoint, ref.ref), (200, 201)) as r:
             # since v2, data set creation / update is a synchronized
             # operation, no task will be created whatsoever
             pass

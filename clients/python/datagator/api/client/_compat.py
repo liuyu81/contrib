@@ -89,7 +89,7 @@ if PY2:
 
     text_type = unicode
 
-    def to_bytes(x, charset=sys.getdefaultencoding(), errors='strict'):
+    def to_bytes(x, charset='utf8', errors='strict'):
         if x is None:
             return None
         if isinstance(x, (bytes, bytearray, buffer)):
@@ -98,7 +98,7 @@ if PY2:
             return x.encode(charset, errors)
         raise TypeError('Expected bytes')
 
-    def to_native(x, charset=sys.getdefaultencoding(), errors='strict'):
+    def to_native(x, charset='utf8', errors='strict'):
         if x is None or isinstance(x, str):
             return x
         return x.encode(charset, errors)
@@ -107,7 +107,7 @@ else:
 
     text_type = str
 
-    def to_bytes(x, charset=sys.getdefaultencoding(), errors='strict'):
+    def to_bytes(x, charset='utf8', errors='strict'):
         if x is None:
             return None
         if isinstance(x, (bytes, bytearray, memoryview)):
@@ -116,13 +116,13 @@ else:
             return x.encode(charset, errors)
         raise TypeError('Expected bytes')
 
-    def to_native(x, charset=sys.getdefaultencoding(), errors='strict'):
+    def to_native(x, charset='utf8', errors='strict'):
         if x is None or isinstance(x, str):
             return x
         return x.decode(charset, errors)
 
 
-def to_unicode(x, charset=sys.getdefaultencoding(), errors='strict',
+def to_unicode(x, charset='utf8', errors='strict',
                allow_none_charset=False):
     if x is None:
         return None

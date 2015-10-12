@@ -16,6 +16,7 @@ import abc
 import atexit
 import importlib
 import io
+import itertools
 import json
 import jsonschema
 import logging
@@ -212,7 +213,15 @@ class EntityType(type):
         except:
             raise RuntimeError("failed to initialize schema validator")
         else:
-            prop['schema'] = jsonschema.Draft4Validator(schema)
+            JsonSchemaValidator = jsonschema.validators.create(
+                meta_schema=jsonschema.Draft4Validator.META_SCHEMA,
+                validators=jsonschema.Draft4Validator.VALIDATORS,
+                version=b"draft4",
+                default_types=dict(itertools.chain(
+                    jsonschema.Draft4Validator.DEFAULT_TYPES.items(),
+                    [('array', (list, tuple)), ]))
+            )
+            prop['schema'] = JsonSchemaValidator(schema)
 
         return type(to_native(name), parent, prop)
 
