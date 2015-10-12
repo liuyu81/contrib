@@ -24,7 +24,7 @@ def _basic_auth(request):
         auth = request.META['HTTP_AUTHORIZATION'].split()
         if len(auth) == 2:
             if auth[0].lower() == "basic":
-                uname, _, passwd = base64.b64decode(auth[1]).split(':', 1)
+                uname, passwd = base64.b64decode(auth[1]).split(':', 1)
                 user = authenticate(username=uname, password=passwd)
                 if user is not None:
                     if user.is_active:
