@@ -31,13 +31,15 @@ from datagator.api.client import environ
 from datagator.api.client._backend import DataGatorService
 
 
-__all__ = ['TestBackendStatus',
-           'TestRepoOperations',
-           'TestDataSetOperations',
-           'TestDataItemOperations',
-           'TestRecipeOperations',
-           'TestSearchOperations',
-           'TestRateLimit', ]
+__all__ = ['TestRoot',
+           'TestRepo',
+           'TestDataSet',
+           'TestDataItem',
+           'TestRecipe',
+           'TestSearch',
+           'TestUser',
+           'TestHttpCrossOrigin',
+           'TestHttpRateLimit', ]
 __all__ = [to_native(n) for n in __all__]
 
 
@@ -51,12 +53,12 @@ def monitor_task(service, url, retry=180):
         assert(task.get("kind") == "datagator#Task")
         if task.get("status") in ("SUC", "ERR"):
             break
-        time.sleep(1.0)
+        time.sleep(3.0)
         retry -= 1
     return task
 
 
-class TestBackendStatus(unittest.TestCase):
+class TestRoot(unittest.TestCase):
     """
     Endpoint:
         ``^/``
@@ -74,7 +76,7 @@ class TestBackendStatus(unittest.TestCase):
         del cls.service
         pass  # void return
 
-    def test_backend_status(self):
+    def test_ROOT_status(self):
         msg = self.service.status
         validator = jsonschema.Draft4Validator(self.service.schema)
         self.assertEqual(validator.validate(msg), None)
@@ -90,10 +92,10 @@ class TestBackendStatus(unittest.TestCase):
     not os.environ.get('DATAGATOR_CREDENTIALS', None) and
     os.environ.get('TRAVIS', False),
     "credentials required for unsupervised testing")
-class TestRepoOperations(unittest.TestCase):
+class TestRepo(unittest.TestCase):
     """
     Endpoint:
-        ``^/<repo>``
+        ``^/repo/{repo}``
     """
 
     @classmethod
@@ -109,7 +111,7 @@ class TestRepoOperations(unittest.TestCase):
         del cls.service
         pass  # void return
 
-    def test_Repo_GET(self):
+    def test_Repo_base_GET(self):
         uri = "repo/{0}".format(self.repo)
         response = self.service.get(uri)
         self.assertEqual(response.status_code, 200)
@@ -119,7 +121,7 @@ class TestRepoOperations(unittest.TestCase):
         self.assertEqual(repo.get("name"), self.repo)
         pass  # void return
 
-    def test_Repo_GET_NonExistence(self):
+    def test_Repo_base_GET_NonExistence(self):
         uri = "repo/NonExistence"
         response = self.service.get(uri)
         self.assertEqual(response.status_code, 404)
@@ -129,14 +131,14 @@ class TestRepoOperations(unittest.TestCase):
         self.assertEqual(msg.get("code"), response.status_code)
         pass  # void return
 
-    def test_Repo_POST(self):
-        uri = "repo/{0}".format(self.repo)
-        response = self.service.post(uri, "")
-        self.assertEqual(response.status_code, 501)
-        msg = response.json()
-        _log.debug(msg.get("message"))
-        self.assertEqual(msg.get("kind"), "datagator#Error")
-        self.assertEqual(msg.get("code"), response.status_code)
+    def test_Repo_content_GET(self):
+        uri = "repo/{0}/".format(self.repo)
+        response = self.service.get(uri)
+        self.assertEqual(response.status_code, 200)
+        page = response.json()
+        self.assertEqual(self.validator.validate(page), None)
+        self.assertEqual(page.get("kind"), "datagator#Page")
+        pass  # void return
 
     pass
 
@@ -145,10 +147,13 @@ class TestRepoOperations(unittest.TestCase):
     not os.environ.get('DATAGATOR_CREDENTIALS', None) and
     os.environ.get('TRAVIS', False),
     "credentials required for unsupervised testing")
-class TestDataSetOperations(unittest.TestCase):
+class TestDataSet(unittest.TestCase):
     """
-    Endpoint:
-        ``^/repo/<repo>``
+    Endpoint (Base):
+        ``^/repo/{repo}/{dataset}``
+
+    Endpoint (Contents):
+        ``^/repo/{repo}/{dataset}/data``
     """
 
     @classmethod
@@ -164,7 +169,7 @@ class TestDataSetOperations(unittest.TestCase):
         del cls.service
         pass  # void return
 
-    def test_DataSet_00_PUT_IGO_Members(self):
+    def test_DataSet_base_PUT_IGO_Members(self):
 
         uri = "repo/{0}/{1}".format(self.repo, "IGO_Members")
         IGO_Members = {
@@ -186,7 +191,7 @@ class TestDataSetOperations(unittest.TestCase):
 
         pass  # void return
 
-    def test_DataSet_00_PUT_Bakery(self):
+    def test_DataSet_base_PUT_Bakery(self):
 
         uri = "repo/{0}/{1}".format(self.repo, "Bakery")
         IGO_Members = {
@@ -208,7 +213,29 @@ class TestDataSetOperations(unittest.TestCase):
 
         pass  # void return
 
-    def test_DataSet_00_PUT_InvalidName(self):
+    def test_DataSet_base_PUT_IGO_Aims(self):
+
+        uri = "repo/{0}/{1}".format(self.repo, "IGO_Aims")
+        IGO_Members = {
+            "kind": "datagator#DataSet",
+            "name": "IGO_Aims",
+            "repo": {
+                "kind": "datagator#Repo",
+                "name": self.repo
+            }
+        }
+
+        response = self.service.put(uri, IGO_Members)
+        self.assertTrue(response.status_code in [200, 201])
+        msg = response.json()
+        self.assertEqual(self.validator.validate(msg), None)
+        _log.debug(msg.get("message"))
+        self.assertEqual(msg.get("kind"), "datagator#Status")
+        self.assertEqual(msg.get("code"), response.status_code)
+
+        pass  # void return
+
+    def test_DataSet_base_PUT_InvalidName(self):
         # triggers SchemaValidationError within backend service
         uri = "repo/{0}/{1}".format(self.repo, "IGO_Members")
         InvalidName = {
@@ -228,7 +255,7 @@ class TestDataSetOperations(unittest.TestCase):
         self.assertEqual(msg.get("code"), response.status_code)
         pass  # void return
 
-    def test_DataSet_00_PUT_MissingKind(self):
+    def test_DataSet_base_PUT_MissingKind(self):
         # triggers SchemaValidationError within backend service
         uri = "repo/{0}/{1}".format(self.repo, "IGO_Members")
         MissingKind = {
@@ -247,7 +274,7 @@ class TestDataSetOperations(unittest.TestCase):
         self.assertEqual(msg.get("code"), response.status_code)
         pass  # void return
 
-    def test_DataSet_00_PUT_InvalidKind(self):
+    def test_DataSet_base_PUT_InvalidKind(self):
         # triggers AssertionError within backend service
         uri = "repo/{0}/{1}".format(self.repo, "Whatever")
         InvalidKind = {
@@ -263,7 +290,7 @@ class TestDataSetOperations(unittest.TestCase):
         self.assertEqual(msg.get("code"), response.status_code)
         pass  # void return
 
-    def test_DataSet_00_PUT_InconsistentRepo(self):
+    def test_DataSet_base_PUT_InconsistentRepo(self):
         # triggers AssertionError within backend service
         uri = "repo/{0}/{1}".format(self.repo, "Whatever")
         InconsistentRepo = {
@@ -283,9 +310,9 @@ class TestDataSetOperations(unittest.TestCase):
         self.assertEqual(msg.get("code"), response.status_code)
         pass  # void return
 
-    def test_DataSet_01_PATCH_IGO_Members(self):
+    def test_DataSet_content_PATCH_IGO_Members(self):
 
-        uri = "repo/{0}/{1}".format(self.repo, "IGO_Members")
+        uri = "repo/{0}/{1}/data/".format(self.repo, "IGO_Members")
         revision = {
             "UN": json.loads(to_unicode(
                 load_data(os.path.join("json", "IGO_Members", "UN.json")))),
@@ -316,9 +343,9 @@ class TestDataSetOperations(unittest.TestCase):
 
         pass  # void return
 
-    def test_DataSet_01_PATCH_Bakery(self):
+    def test_DataSet_content_PATCH_Bakery(self):
 
-        uri = "repo/{0}/{1}".format(self.repo, "Bakery")
+        uri = "repo/{0}/{1}/data/".format(self.repo, "Bakery")
         revision = {
             "US_Membership.recipe": json.loads(to_unicode(load_data(
                 os.path.join("json", "Bakery", "US_Membership.json"))))
@@ -343,9 +370,37 @@ class TestDataSetOperations(unittest.TestCase):
 
         pass  # void return
 
-    def test_DataSet_01_PATCH_InvalidPayload(self):
+    def test_DataSet_content_PATCH_IGO_Aims(self):
+
+        # AAAID.json contains unescaped unicode characters
+        uri = "repo/{0}/{1}/data/".format(self.repo, "IGO_Aims")
+        revision = {
+            "AAAID": json.loads(to_unicode(load_data(
+                os.path.join("json", "IGO_Aims", "AAAID.json"))))
+        }
+
+        response = self.service.patch(uri, revision)
+        self.assertEqual(response.status_code, 202)
+        msg = response.json()
+        self.assertEqual(self.validator.validate(msg), None)
+        _log.debug(msg.get("message"))
+        self.assertEqual(msg.get("kind"), "datagator#Status")
+        self.assertEqual(msg.get("code"), response.status_code)
+
+        # monitor the task until the revision is committed or an error occurs
+        self.assertTrue("Location" in response.headers)
+        url = response.headers['Location']
+        _log.debug(url)
+        task = monitor_task(self.service, url)
+        self.assertEqual(self.validator.validate(task), None)
+        self.assertEqual(task.get("kind"), "datagator#Task")
+        self.assertEqual(task.get("status"), "SUC")
+
+        pass  # void return
+
+    def test_DataSet_content_PATCH_InvalidPayload(self):
         # triggers AssertionError within backend service
-        uri = "repo/{0}/{1}".format(self.repo, "IGO_Members")
+        uri = "repo/{0}/{1}/data/".format(self.repo, "IGO_Members")
         InvalidPayload = ["array", "as", "payload"]
         response = self.service.patch(uri, InvalidPayload)
         self.assertEqual(response.status_code, 400)
@@ -356,9 +411,9 @@ class TestDataSetOperations(unittest.TestCase):
         self.assertEqual(msg.get("code"), response.status_code)
         pass  # void return
 
-    def test_DataSet_01_PATCH_MissingKind(self):
+    def test_DataSet_content_PATCH_MissingKind(self):
         # triggers SchemaValidationError within backend service
-        uri = "repo/{0}/{1}".format(self.repo, "IGO_Members")
+        uri = "repo/{0}/{1}/data/".format(self.repo, "IGO_Members")
         MissingKind = {
             "UN": {
                 "name": "IGO_Members",
@@ -377,9 +432,9 @@ class TestDataSetOperations(unittest.TestCase):
         self.assertEqual(msg.get("code"), response.status_code)
         pass  # void return
 
-    def test_DataSet_01_PATCH_InvalidKey(self):
+    def test_DataSet_content_PATCH_InvalidKey(self):
         # triggers AssertionError within backend service
-        uri = "repo/{0}/{1}".format(self.repo, "IGO_Members")
+        uri = "repo/{0}/{1}/data/".format(self.repo, "IGO_Members")
         InvalidKey = {
             "U#N": json.loads(to_unicode(
                 load_data(os.path.join("json", "IGO_Members", "WTO.json"))))
@@ -393,9 +448,9 @@ class TestDataSetOperations(unittest.TestCase):
         self.assertEqual(msg.get("code"), response.status_code)
         pass  # void return
 
-    def test_DataSet_01_PATCH_InvalidKind(self):
+    def test_DataSet_content_PATCH_InvalidKind(self):
         # triggers AssertionError within backend service
-        uri = "repo/{0}/{1}".format(self.repo, "IGO_Members")
+        uri = "repo/{0}/{1}/data/".format(self.repo, "IGO_Members")
         InvalidKind = {
             "UN": {
                 "kind": "datagator#DataSet",
@@ -415,9 +470,9 @@ class TestDataSetOperations(unittest.TestCase):
         self.assertEqual(msg.get("code"), response.status_code)
         pass  # void return
 
-    def test_DataSet_01_PATCH_InvalidShape(self):
+    def test_DataSet_content_PATCH_InvalidShape(self):
         # triggers AssertionError within backend service
-        uri = "repo/{0}/{1}".format(self.repo, "IGO_Members")
+        uri = "repo/{0}/{1}/data/".format(self.repo, "IGO_Members")
         InvalidShape = {
             "UN": {
                 "kind": "datagator#Matrix",
@@ -437,9 +492,9 @@ class TestDataSetOperations(unittest.TestCase):
         self.assertEqual(msg.get("code"), response.status_code)
         pass  # void return
 
-    def test_DataSet_01_PATCH_InconsistentShape(self):
+    def test_DataSet_content_PATCH_InconsistentShape(self):
         # triggers AssertionError within backend service
-        uri = "repo/{0}/{1}".format(self.repo, "IGO_Members")
+        uri = "repo/{0}/{1}/data/".format(self.repo, "IGO_Members")
         InconsistentShape = {
             "UN": {
                 "kind": "datagator#Matrix",
@@ -459,10 +514,10 @@ class TestDataSetOperations(unittest.TestCase):
         self.assertEqual(msg.get("code"), response.status_code)
         pass  # void return
 
-    def test_DataSet_01_PATCH_RemoveNonExistent(self):
+    def test_DataSet_content_PATCH_RemoveNonExistent(self):
         # NOTE: this does NOT trigger an error on the backend service
 
-        uri = "repo/{0}/{1}".format(self.repo, "IGO_Members")
+        uri = "repo/{0}/{1}/data/".format(self.repo, "IGO_Members")
         RemoveNonExistent = {
             "NonExistent": None
         }
@@ -485,7 +540,7 @@ class TestDataSetOperations(unittest.TestCase):
         self.assertEqual(task.get("status"), "SUC")
         pass  # void return
 
-    def test_DataSet_02_GET(self):
+    def test_DataSet_base_GET(self):
         uri = "repo/{0}/{1}".format(self.repo, "IGO_Members")
         response = self.service.get(uri)
         self.assertEqual(response.status_code, 200)
@@ -500,7 +555,7 @@ class TestDataSetOperations(unittest.TestCase):
         self.assertEqual(repo.get("name"), self.repo)
         pass  # void return
 
-    def test_DataSet_02_GET_NonExistence(self):
+    def test_DataSet_base_GET_NonExistence(self):
         uri = "repo/Pardee/NonExistence"
         response = self.service.get(uri)
         self.assertEqual(response.status_code, 404)
@@ -517,7 +572,7 @@ class TestDataSetOperations(unittest.TestCase):
     not os.environ.get('DATAGATOR_CREDENTIALS', None) and
     os.environ.get('TRAVIS', False),
     "credentials required for unsupervised testing")
-class TestDataItemOperations(unittest.TestCase):
+class TestDataItem(unittest.TestCase):
     """
     Endpoint:
         ``^/repo/<repo>/<dataset>/<key>``
@@ -537,7 +592,8 @@ class TestDataItemOperations(unittest.TestCase):
         pass  # void return
 
     def test_DataItem_GET(self):
-        uri = "repo/{0}/{1}/{2}".format(self.repo, "IGO_Members", "UN")
+        uri = "repo/{0}/{1}/data/{2}".format(
+            self.repo, "IGO_Members", "UN")
         UN = json.loads(to_unicode(
             load_data(os.path.join("json", "IGO_Members", "UN.json"))))
         # full GET
@@ -557,7 +613,8 @@ class TestDataItemOperations(unittest.TestCase):
         pass  # void return
 
     def test_DataItem_POST_MatrixToXlsx(self):
-        uri = "repo/{0}/{1}/{2}".format(self.repo, "IGO_Members", "UN")
+        uri = "repo/{0}/{1}/data/{2}".format(
+            self.repo, "IGO_Members", "UN")
         data = {"fmt": "xlsx"}
 
         # submit conversion request
@@ -594,7 +651,7 @@ class TestDataItemOperations(unittest.TestCase):
     not os.environ.get('DATAGATOR_CREDENTIALS', None) and
     os.environ.get('TRAVIS', False),
     "credentials required for unsupervised testing")
-class TestRecipeOperations(unittest.TestCase):
+class TestRecipe(unittest.TestCase):
     """
     Endpoint:
         ``^/repo/<repo>/<dataset>/<key>.recipe``
@@ -614,7 +671,7 @@ class TestRecipeOperations(unittest.TestCase):
         pass  # void return
 
     def test_Recipe_GET(self):
-        uri = "repo/{0}/{1}/{2}".format(
+        uri = "repo/{0}/{1}/data/{2}".format(
             self.repo, "Bakery", "US_Membership.recipe")
         AST = json.loads(to_unicode(
             load_data(os.path.join("json", "Bakery", "US_Membership.json"))))
@@ -637,7 +694,7 @@ class TestRecipeOperations(unittest.TestCase):
         pass  # void return
 
     def test_Recipe_POST(self):
-        uri = "repo/{0}/{1}/{2}".format(
+        uri = "repo/{0}/{1}/data/{2}".format(
             self.repo, "Bakery", "US_Membership.recipe")
         data = {"act": "bake"}
         response = self.service.post(uri, data=data)
@@ -656,7 +713,8 @@ class TestRecipeOperations(unittest.TestCase):
         self.assertEqual(task.get("kind"), "datagator#Task")
         self.assertEqual(task.get("status"), "SUC")
         # download the baked matrix
-        uri = "repo/{0}/{1}/{2}".format(self.repo, "Bakery", "US_Membership")
+        uri = "repo/{0}/{1}/data/{2}".format(
+            self.repo, "Bakery", "US_Membership")
         download = self.service.get(uri)
         self.assertEqual(download.status_code, 200)
         self.assertTrue("Content-Type" in download.headers)
@@ -667,7 +725,7 @@ class TestRecipeOperations(unittest.TestCase):
     pass
 
 
-class TestSearchOperations(unittest.TestCase):
+class TestSearch(unittest.TestCase):
     """
     Endpoint:
         ``^/search``
@@ -693,7 +751,61 @@ class TestSearchOperations(unittest.TestCase):
     not os.environ.get('DATAGATOR_CREDENTIALS', None) and
     os.environ.get('TRAVIS', False),
     "credentials required for unsupervised testing")
-class TestRateLimit(unittest.TestCase):
+class TestUser(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        environ.DATAGATOR_API_VERSION = "v2"
+        cls.repo, cls.secret = get_credentials()
+        cls.service = DataGatorService(auth=(cls.repo, cls.secret))
+        cls.validator = jsonschema.Draft4Validator(cls.service.schema)
+        pass  # void return
+
+    @classmethod
+    def tearDownClass(cls):
+        del cls.service
+        pass  # void return
+
+    def test_User_Clip_PUT(self):
+        uri = "user/clip/"
+        response = self.service.put(uri, "")
+        self.assertEqual(response.status_code, 501)
+        msg = response.json()
+        _log.debug(msg.get("message"))
+        self.assertEqual(msg.get("kind"), "datagator#Error")
+        self.assertEqual(msg.get("code"), response.status_code)
+
+    pass
+
+
+class TestHttpCrossOrigin(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        environ.DATAGATOR_API_VERSION = "v2"
+        cls.service = DataGatorService()
+        cls.validator = jsonschema.Draft4Validator(cls.service.schema)
+        pass  # void return
+
+    def test_HTTP_cors_headers(self):
+
+        r = self.service.get("/", headers={'Origin': "http://127.0.0.1"})
+
+        self.assertTrue("Access-Control-Allow-Credentials" in r.headers)
+        self.assertTrue("Access-Control-Allow-Methods" in r.headers)
+        self.assertTrue("Access-Control-Allow-Origin" in r.headers)
+        self.assertTrue("Access-Control-Expose-Headers" in r.headers)
+
+        pass  # void return
+
+    pass
+
+
+@unittest.skipIf(
+    not os.environ.get('DATAGATOR_CREDENTIALS', None) and
+    os.environ.get('TRAVIS', False),
+    "credentials required for unsupervised testing")
+class TestHttpRateLimit(unittest.TestCase):
     """
     Test rate limiting headers
     """
@@ -711,7 +823,7 @@ class TestRateLimit(unittest.TestCase):
         del cls.service
         pass  # void return
 
-    def test_ratelimit_headers(self):
+    def test_HTTP_ratelimit_headers(self):
 
         r = self.service.get("/")
         self.assertTrue("X-RateLimit-Limit" in r.headers)
