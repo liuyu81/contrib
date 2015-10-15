@@ -23,7 +23,6 @@ A stub implementation for the `XLSX Extractor` module can be found in ``XlsxInpu
                                 └── XlsxInputStreamExtractor.java
 
 
-
 CLI Invocation
 ~~~~~~~~~~~~~~
 
