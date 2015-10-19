@@ -1,6 +1,11 @@
 .coverage
 .DS_Store
 build
+bin
+include
+lib
 *.pyc
 *.pyo
 
+/samples/importer/target/
+/clients/java/target/
