@@ -21,6 +21,7 @@ import json
 import jsonschema
 import logging
 import os
+import re
 import tempfile
 
 from . import environ
@@ -86,6 +87,17 @@ class validated(object):
         HTTP message headers of the underlying response
         """
         return self.__response.headers
+
+    @property
+    def links(self):
+        """
+        HTTP Link headers parsed as a dictionary
+        """
+        if "Link" not in self.headers:
+            return dict()
+        regex = r"""<([^\>]*)>;\s*rel="(\w+)"\s*"""
+        return dict([(k, v) for v, k in re.findall(
+            regex, self.headers['Link'])])
 
     @property
     def body(self):

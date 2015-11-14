@@ -25,6 +25,7 @@ class EnvironModule(types.ModuleType):
         'DATAGATOR_API_FOLLOW_REDIRECT',
         'DATAGATOR_API_TIMEOUT',
         'DATAGATOR_API_HOST',
+        'DATAGATOR_API_ROOT',
         'DATAGATOR_API_SCHEME',
         'DATAGATOR_API_VERSION',
         'DATAGATOR_API_URL',
@@ -34,11 +35,12 @@ class EnvironModule(types.ModuleType):
         'DEBUG', ]]
 
     # version tuple of the pythonic HTTP client library
-    __client_version__ = (0, 1, 6)
+    __client_version__ = (0, 1, 7)
 
     __slots__ = ["DATAGATOR_API_ACCEPT_ENCODING",
                  "DATAGATOR_API_FOLLOW_REDIRECT",
                  "DATAGATOR_API_HOST",
+                 "DATAGATOR_API_ROOT",
                  "DATAGATOR_API_SCHEME",
                  "DATAGATOR_API_VERSION",
                  "DATAGATOR_HOME",
@@ -50,6 +52,9 @@ class EnvironModule(types.ModuleType):
         # domain name or IP address of backend service portal
         self.DATAGATOR_API_HOST = os.environ.get(
             "DATAGATOR_API_HOST", "www.data-gator.com")
+        # root URI of backend service portal
+        self.DATAGATOR_API_ROOT = os.environ.get(
+            "DATAGATOR_API_ROOT", "/api/")
         # HTTP or HTTPS
         self.DATAGATOR_API_SCHEME = os.environ.get(
             "DATAGATOR_API_SCHEME", "https")
@@ -81,9 +86,10 @@ class EnvironModule(types.ModuleType):
         """
         URL prefix of all RESTful API endpoints
         """
-        return "{0}://{1}/api/{2}".format(
+        return "{0}://{1}{2}{3}".format(
             self.DATAGATOR_API_SCHEME,
             self.DATAGATOR_API_HOST,
+            self.DATAGATOR_API_ROOT,
             self.DATAGATOR_API_VERSION)
 
     @property

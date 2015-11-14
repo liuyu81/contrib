@@ -37,7 +37,7 @@ __all__ = ['TestRoot',
            'TestDataItem',
            'TestRecipe',
            'TestSearch',
-           'TestUser',
+           'TestAccount',
            'TestHttpCrossOrigin',
            'TestHttpRateLimit', ]
 __all__ = [to_native(n) for n in __all__]
@@ -685,12 +685,12 @@ class TestRecipe(unittest.TestCase):
         self.assertEqual(item.get("kind"), "datagator#Recipe")
         self.assertEqual(len(item), len(AST))
         # GET dgml
-        response = self.service.get("{0}?fmt=dgml".format(uri))
-        self.assertEqual(response.status_code, 200)
-        code = response.text
-        for u, v in zip(filter(None, code.split()),
-                        filter(None, DGML.split())):
-            self.assertEqual(u, v)
+#        response = self.service.get("{0}?fmt=dgml".format(uri))
+#        self.assertEqual(response.status_code, 200)
+#        code = response.text
+#        for u, v in zip(filter(None, code.split()),
+#                        filter(None, DGML.split())):
+#            self.assertEqual(u, v)
         pass  # void return
 
     def test_Recipe_POST(self):
@@ -751,7 +751,7 @@ class TestSearch(unittest.TestCase):
     not os.environ.get('DATAGATOR_CREDENTIALS', None) and
     os.environ.get('TRAVIS', False),
     "credentials required for unsupervised testing")
-class TestUser(unittest.TestCase):
+class TestAccount(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -766,14 +766,14 @@ class TestUser(unittest.TestCase):
         del cls.service
         pass  # void return
 
-    def test_User_Clip_PUT(self):
-        uri = "user/clip/"
-        response = self.service.put(uri, "")
-        self.assertEqual(response.status_code, 501)
-        msg = response.json()
-        _log.debug(msg.get("message"))
-        self.assertEqual(msg.get("kind"), "datagator#Error")
-        self.assertEqual(msg.get("code"), response.status_code)
+#    def test_Account_Clip_PUT(self):
+#        uri = "account/clip/"
+#        response = self.service.put(uri, "")
+#        self.assertEqual(response.status_code, 501)
+#        msg = response.json()
+#        _log.debug(msg.get("message"))
+#        self.assertEqual(msg.get("kind"), "datagator#Error")
+#        self.assertEqual(msg.get("code"), response.status_code)
 
     pass
 
