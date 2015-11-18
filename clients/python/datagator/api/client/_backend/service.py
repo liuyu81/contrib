@@ -253,6 +253,18 @@ class DataGatorService(object):
             headers=headers)
         return r
 
+    def options(self, path, headers={}):
+        """
+        :param path: relative url w.r.t. ``DATAGATOR_API_URL``.
+        :param headers: extra HTTP headers to be sent with request.
+        :returns: HTTP response object.
+        """
+        r = self.http.request(
+            method="OPTIONS",
+            url=safe_url(path),
+            headers=headers)
+        return r
+
     def patch(self, path, data, headers={}):
         """
         :param path: relative url w.r.t. ``DATAGATOR_API_URL``.

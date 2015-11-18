@@ -789,12 +789,34 @@ class TestHttpCrossOrigin(unittest.TestCase):
 
     def test_HTTP_cors_headers(self):
 
-        r = self.service.get("/", headers={'Origin': "http://127.0.0.1"})
-
+        r = self.service.get("/", headers={'Origin': "http://example.com"})
         self.assertTrue("Access-Control-Allow-Credentials" in r.headers)
-        self.assertTrue("Access-Control-Allow-Methods" in r.headers)
         self.assertTrue("Access-Control-Allow-Origin" in r.headers)
         self.assertTrue("Access-Control-Expose-Headers" in r.headers)
+
+        # CORS preflight
+        r = self.service.options("/", headers={
+            'Origin': "http://example.com",
+            'Access-Control-Request-Headers': "Accept, Authorization",
+            'Access-Control-Request-Methods': "GET"})
+        self.assertTrue("Access-Control-Allow-Methods" in r.headers)
+        self.assertTrue("Access-Control-Allow-Headers" in r.headers)
+        self.assertTrue("Access-Control-Allow-Credentials" in r.headers)
+        self.assertTrue("Access-Control-Allow-Origin" in r.headers)
+        self.assertTrue("Access-Control-Expose-Headers" in r.headers)
+        self.assertEqual(r.status_code, 200)
+
+        # CORS preflight (non-existent endpoint)
+        r = self.service.options("/NonExistentEndpoint", headers={
+            'Origin': "http://example.com",
+            'Access-Control-Request-Headers': "Accept, Authorization",
+            'Access-Control-Request-Methods': "GET"})
+        self.assertTrue("Access-Control-Allow-Methods" in r.headers)
+        self.assertTrue("Access-Control-Allow-Headers" in r.headers)
+        self.assertTrue("Access-Control-Allow-Credentials" in r.headers)
+        self.assertTrue("Access-Control-Allow-Origin" in r.headers)
+        self.assertTrue("Access-Control-Expose-Headers" in r.headers)
+        self.assertEqual(r.status_code, 404)
 
         pass  # void return
 
