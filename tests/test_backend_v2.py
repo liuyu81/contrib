@@ -314,16 +314,40 @@ class TestDataSet(unittest.TestCase):
 
         uri = "repo/{0}/{1}/data/".format(self.repo, "IGO_Members")
         revision = {
-            "UN": json.loads(to_unicode(
-                load_data(os.path.join("json", "IGO_Members", "UN.json")))),
-            "WTO": json.loads(to_unicode(
-                load_data(os.path.join("json", "IGO_Members", "WTO.json")))),
-            "IMF": json.loads(to_unicode(
-                load_data(os.path.join("json", "IGO_Members", "IMF.json")))),
-            "OPEC": json.loads(to_unicode(
-                load_data(os.path.join("json", "IGO_Members", "OPEC.json")))),
+            "kind": "datagator#DataSet",
+            "repo": {
+                "kind": "datagator#Repo",
+                "name": self.repo
+            },
+            "name": "IGO_Members",
+            "items": [
+                {
+                    "kind": "datagator#Matrix",
+                    "name": "UN",
+                    "data": json.loads(to_unicode(load_data(os.path.join(
+                        "json", "IGO_Members", "UN.json")))),
+                },
+                {
+                    "kind": "datagator#Matrix",
+                    "name": "WTO",
+                    "data": json.loads(to_unicode(load_data(os.path.join(
+                        "json", "IGO_Members", "WTO.json")))),
+                },
+                {
+                    "kind": "datagator#Matrix",
+                    "name": "IMF",
+                    "data": json.loads(to_unicode(load_data(os.path.join(
+                        "json", "IGO_Members", "IMF.json")))),
+                },
+                {
+                    "kind": "datagator#Matrix",
+                    "name": "OPEC",
+                    "data": json.loads(to_unicode(load_data(os.path.join(
+                        "json", "IGO_Members", "OPEC.json")))),
+                }
+            ],
+            "itemsCount": 4
         }
-
         response = self.service.patch(uri, revision)
         self.assertEqual(response.status_code, 202)
         msg = response.json()
@@ -344,13 +368,24 @@ class TestDataSet(unittest.TestCase):
         pass  # void return
 
     def test_DataSet_content_PATCH_Bakery(self):
-
         uri = "repo/{0}/{1}/data/".format(self.repo, "Bakery")
         revision = {
-            "US_Membership.recipe": json.loads(to_unicode(load_data(
-                os.path.join("json", "Bakery", "US_Membership.json"))))
+            "kind": "datagator#DataSet",
+            "repo": {
+                "kind": "datagator#Repo",
+                "name": self.repo
+            },
+            "name": "Bakery",
+            "items": [
+                {
+                    "kind": "datagator#Recipe",
+                    "name": "US_Membership",
+                    "data": json.loads(to_unicode(load_data(os.path.join(
+                        "json", "Bakery", "US_Membership.json"))))
+                }
+            ],
+            "itemsCount": 1
         }
-
         response = self.service.patch(uri, revision)
         self.assertEqual(response.status_code, 202)
         msg = response.json()
@@ -375,10 +410,22 @@ class TestDataSet(unittest.TestCase):
         # AAAID.json contains unescaped unicode characters
         uri = "repo/{0}/{1}/data/".format(self.repo, "IGO_Aims")
         revision = {
-            "AAAID": json.loads(to_unicode(load_data(
-                os.path.join("json", "IGO_Aims", "AAAID.json"))))
+            "kind": "datagator#DataSet",
+            "repo": {
+                "kind": "datagator#Repo",
+                "name": self.repo
+            },
+            "name": "IGO_Aims",
+            "items": [
+                {
+                    "kind": "datagator#Matrix",
+                    "name": "AAAID",
+                    "data": json.loads(to_unicode(load_data(os.path.join(
+                        "json", "IGO_Aims", "AAAID.json"))))
+                }
+            ],
+            "itemsCount": 1
         }
-
         response = self.service.patch(uri, revision)
         self.assertEqual(response.status_code, 202)
         msg = response.json()
@@ -415,13 +462,22 @@ class TestDataSet(unittest.TestCase):
         # triggers SchemaValidationError within backend service
         uri = "repo/{0}/{1}/data/".format(self.repo, "IGO_Members")
         MissingKind = {
-            "UN": {
-                "name": "IGO_Members",
-                "repo": {
-                    "kind": "datagator#Repo",
-                    "name": self.repo
+            "kind": "datagator#DataSet",
+            "repo": {
+                "kind": "datagator#Repo",
+                "name": self.repo
+            },
+            "name": "IGO_Members",
+            "items": [
+                {
+                    "name": "IGO_Members",
+                    "repo": {
+                        "kind": "datagator#Repo",
+                        "name": self.repo
+                    }
                 }
-            }
+            ],
+            "itemsCount": 1
         }
         response = self.service.patch(uri, MissingKind)
         self.assertEqual(response.status_code, 400)
@@ -436,8 +492,21 @@ class TestDataSet(unittest.TestCase):
         # triggers AssertionError within backend service
         uri = "repo/{0}/{1}/data/".format(self.repo, "IGO_Members")
         InvalidKey = {
-            "U#N": json.loads(to_unicode(
-                load_data(os.path.join("json", "IGO_Members", "WTO.json"))))
+            "kind": "datagator#DataSet",
+            "repo": {
+                "kind": "datagator#Repo",
+                "name": self.repo
+            },
+            "name": "IGO_Members",
+            "items": [
+                {
+                    "kind": "datagator#Matrix",
+                    "name": "U#N",
+                    "data": json.loads(to_unicode(load_data(os.path.join(
+                        "json", "IGO_Members", "WTO.json"))))
+                }
+            ],
+            "itemsCount": 1
         }
         response = self.service.patch(uri, InvalidKey)
         self.assertEqual(response.status_code, 400)
@@ -452,14 +521,23 @@ class TestDataSet(unittest.TestCase):
         # triggers AssertionError within backend service
         uri = "repo/{0}/{1}/data/".format(self.repo, "IGO_Members")
         InvalidKind = {
-            "UN": {
-                "kind": "datagator#DataSet",
-                "name": "IGO_Members",
-                "repo": {
-                    "kind": "datagator#Repo",
-                    "name": self.repo
+            "kind": "datagator#DataSet",
+            "repo": {
+                "kind": "datagator#Repo",
+                "name": self.repo
+            },
+            "name": "IGO_Members",
+            "items": [
+                {
+                    "kind": "datagator#DataSet",
+                    "name": "IGO_Members",
+                    "repo": {
+                        "kind": "datagator#Repo",
+                        "name": self.repo
+                    }
                 }
-            }
+            ],
+            "itemsCount": 1
         }
         response = self.service.patch(uri, InvalidKind)
         self.assertEqual(response.status_code, 400)
@@ -474,14 +552,28 @@ class TestDataSet(unittest.TestCase):
         # triggers AssertionError within backend service
         uri = "repo/{0}/{1}/data/".format(self.repo, "IGO_Members")
         InvalidShape = {
-            "UN": {
-                "kind": "datagator#Matrix",
-                "rows": [[1, 2, 3], [4, 5], [6, 7, 8]],  # ill-formed row(s)
-                "columnsCount": 3,
-                "rowsCount": 3,
-                "rowHeaders": 0,
-                "columnHeaders": 0
-            }
+            "kind": "datagator#DataSet",
+            "repo": {
+                "kind": "datagator#Repo",
+                "name": self.repo
+            },
+            "name": "IGO_Members",
+            "items": [
+                {
+                    "kind": "datagator#Matrix",
+                    "name": "UN",
+                    "data": {
+                        "kind": "datagator#Matrix",
+                        "rows": [
+                            [1, 2, 3], [4, 5], [6, 7, 8]],  # ill-formed row(s)
+                        "columnsCount": 3,
+                        "rowsCount": 3,
+                        "rowHeaders": 0,
+                        "columnHeaders": 0
+                    }
+                }
+            ],
+            "itemsCount": 1
         }
         response = self.service.patch(uri, InvalidShape)
         self.assertEqual(response.status_code, 400)
@@ -496,14 +588,27 @@ class TestDataSet(unittest.TestCase):
         # triggers AssertionError within backend service
         uri = "repo/{0}/{1}/data/".format(self.repo, "IGO_Members")
         InconsistentShape = {
-            "UN": {
-                "kind": "datagator#Matrix",
-                "rows": [[1, 2, 3], [4, 5, 6], [6, 7, 8]],
-                "columnsCount": 4,  # inconsistent columns count
-                "rowsCount": 3,
-                "rowHeaders": 0,
-                "columnHeaders": 0
-            }
+            "kind": "datagator#DataSet",
+            "repo": {
+                "kind": "datagator#Repo",
+                "name": self.repo
+            },
+            "name": "IGO_Members",
+            "items": [
+                {
+                    "kind": "datagator#Matrix",
+                    "name": "UN",
+                    "data": {
+                        "kind": "datagator#Matrix",
+                        "rows": [[1, 2, 3], [4, 5, 6], [6, 7, 8]],
+                        "columnsCount": 4,  # inconsistent columns count
+                        "rowsCount": 3,
+                        "rowHeaders": 0,
+                        "columnHeaders": 0
+                    }
+                }
+            ],
+            "itemsCount": 1
         }
         response = self.service.patch(uri, InconsistentShape)
         self.assertEqual(response.status_code, 400)
@@ -516,12 +621,23 @@ class TestDataSet(unittest.TestCase):
 
     def test_DataSet_content_PATCH_RemoveNonExistent(self):
         # NOTE: this does NOT trigger an error on the backend service
-
         uri = "repo/{0}/{1}/data/".format(self.repo, "IGO_Members")
         RemoveNonExistent = {
-            "NonExistent": None
+            "kind": "datagator#DataSet",
+            "repo": {
+                "kind": "datagator#Repo",
+                "name": self.repo
+            },
+            "name": "IGO_Members",
+            "items": [
+                {
+                    "kind": "datagator#Matrix",
+                    "name": "NonExistent",
+                    "data": None
+                }
+            ],
+            "itemsCount": 1
         }
-
         response = self.service.patch(uri, RemoveNonExistent)
         self.assertEqual(response.status_code, 202)
         msg = response.json()
@@ -615,7 +731,7 @@ class TestDataItem(unittest.TestCase):
     def test_DataItem_POST_MatrixToXlsx(self):
         uri = "repo/{0}/{1}/data/{2}".format(
             self.repo, "IGO_Members", "UN")
-        data = {"fmt": "xlsx"}
+        data = {"format": "xlsx"}
 
         # submit conversion request
         response = self.service.post(uri, data=data)
@@ -685,7 +801,7 @@ class TestRecipe(unittest.TestCase):
         self.assertEqual(item.get("kind"), "datagator#Recipe")
         self.assertEqual(len(item), len(AST))
         # GET dgml
-#        response = self.service.get("{0}?fmt=dgml".format(uri))
+#        response = self.service.get("{0}?format=dgml".format(uri))
 #        self.assertEqual(response.status_code, 200)
 #        code = response.text
 #        for u, v in zip(filter(None, code.split()),
